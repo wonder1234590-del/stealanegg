@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>GameMarket — Telegram Mini App</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --bg: #0e1116;
+  --bg-2: #161b22;
+  --card: #1c2230;
+  --card-2: #232a3a;
+  --border: #2a3142;
+  --text: #e6edf3;
+  --text-dim: #8b96a8;
+  --accent: #2ea6ff;
+  --accent-2: #1c8ce0;
+  --green: #22c55e;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --star: #ffb800;
+  --radius: 16px;
+  --radius-sm: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body { display: flex; flex-direction: column; }
+
+/* ---------- TOP BAR ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px;
+  background: rgba(14,17,22,0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+.balance-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 8px 12px; border-radius: 999px;
+  font-weight: 700; font-size: 15px;
+  flex-shrink: 0;
+}
+.balance-chip .star { color: var(--star); font-size: 16px; }
+.balance-chip .num { color: var(--text); }
+
+.top-actions { display: flex; gap: 6px; margin-left: auto; }
+.icon-btn {
+  width: 38px; height: 38px; border-radius: 12px;
+  background: var(--card); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; cursor: pointer; color: var(--text);
+  transition: transform .1s, background .2s;
+  position: relative;
+}
+.icon-btn:active { transform: scale(0.94); }
+.icon-btn.plus { color: var(--green); font-weight: 800; }
+.icon-btn.support { color: var(--green); }
+.icon-btn.support::after {
+  content: ''; position: absolute; top: 6px; right: 6px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green); box-shadow: 0 0 8px var(--green);
+}
+
+/* ---------- CONTENT ---------- */
+.content {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 14px 14px 100px;
+  -webkit-overflow-scrolling: touch;
+}
+.page { display: none; animation: fade .25s ease; }
+.page.active { display: block; }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+h1 { font-size: 22px; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.02em; }
+.subtitle { color: var(--text-dim); font-size: 13px; margin-bottom: 16px; }
+
+/* ---------- SEARCH & FILTERS ---------- */
+.search-box {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.search-box input {
+  flex: 1; background: transparent; border: 0; outline: 0;
+  color: var(--text); font-size: 15px;
+}
+.search-box input::placeholder { color: var(--text-dim); }
+
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  flex-shrink: 0; padding: 7px 14px; border-radius: 999px;
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--text-dim); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .2s;
+}
+.chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.sort-row { display: flex; gap: 6px; margin-bottom: 14px; }
+.sort-btn {
+  flex: 1; padding: 8px; border-radius: 10px;
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--text-dim); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.sort-btn.active { color: var(--accent); border-color: var(--accent); }
+
+/* ---------- ITEM CARDS ---------- */
+.grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.item-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px;
+  display: flex; gap: 12px; align-items: center;
+  cursor: pointer; transition: transform .12s, background .2s;
+}
+.item-card:active { transform: scale(0.985); background: var(--card-2); }
+.item-thumb {
+  width: 64px; height: 64px; border-radius: 12px;
+  background: var(--card-2); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; overflow: hidden;
+}
+.item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.item-info { flex: 1; min-width: 0; }
+.item-title {
+  font-weight: 700; font-size: 15px; margin-bottom: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.item-meta { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+.game-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 6px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.game-roblox { background: rgba(255,255,255,0.08); color: #fff; }
+.game-standoff { background: rgba(255,140,0,0.15); color: #ff9500; }
+
+.item-price {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+}
+.price-tag {
+  display: flex; align-items: center; gap: 3px;
+  color: var(--star); font-weight: 800; font-size: 16px;
+}
+.buy-btn {
+  background: var(--accent); color: #fff; border: 0;
+  padding: 7px 14px; border-radius: 10px;
+  font-weight: 700; font-size: 12px; cursor: pointer;
+  transition: background .2s;
+}
+.buy-btn:active { background: var(--accent-2); }
+
+/* ---------- BUTTONS ---------- */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; padding: 14px; border-radius: var(--radius-sm);
+  border: 0; font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: transform .1s, background .2s;
+  font-family: inherit;
+}
+.btn:active { transform: scale(0.98); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:active { background: var(--accent-2); }
+.btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+.btn-green { background: var(--green); color: #fff; }
+.btn-red { background: var(--red); color: #fff; }
+.btn-yellow { background: var(--yellow); color: #000; }
+.btn:disabled { opacity: 0.5; pointer-events: none; }
+
+/* ---------- FORM ---------- */
+.field { margin-bottom: 14px; }
+.field label {
+  display: block; font-size: 13px; font-weight: 600;
+  color: var(--text-dim); margin-bottom: 6px;
+}
+.field input, .field select, .field textarea {
+  width: 100%; padding: 13px 14px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-size: 15px; outline: 0; font-family: inherit;
+  transition: border-color .2s;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--accent);
+}
+.field textarea { resize: vertical; min-height: 80px; }
+.field select { appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b96a8' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center;
+  padding-right: 40px;
+}
+
+.upload-zone {
+  border: 2px dashed var(--border); border-radius: var(--radius-sm);
+  padding: 20px; text-align: center; color: var(--text-dim);
+  cursor: pointer; font-size: 13px; transition: border-color .2s;
+}
+.upload-zone:active { border-color: var(--accent); }
+
+/* ---------- ORDER / CHAT CARDS ---------- */
+.order-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px; margin-bottom: 10px;
+  cursor: pointer;
+}
+.order-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
+.order-title { font-weight: 700; font-size: 15px; }
+.status-badge {
+  padding: 3px 9px; border-radius: 6px; font-size: 10px;
+  font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.status-pending { background: rgba(245,158,11,0.15); color: var(--yellow); }
+.status-chat { background: rgba(46,166,255,0.15); color: var(--accent); }
+.status-completed { background: rgba(34,197,94,0.15); color: var(--green); }
+.status-disputed { background: rgba(239,68,68,0.15); color: var(--red); }
+
+.order-meta { font-size: 12px; color: var(--text-dim); line-height: 1.6; }
+.order-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+/* ---------- PROFILE ---------- */
+.profile-header {
+  background: linear-gradient(135deg, var(--card) 0%, var(--card-2) 100%);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; text-align: center; margin-bottom: 14px;
+}
+.avatar {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--accent); margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; font-weight: 800; color: #fff;
+  overflow: hidden;
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.profile-name { font-size: 18px; font-weight: 800; margin-bottom: 2px; }
+.profile-id { font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
+.profile-balance {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,184,0,0.1); border: 1px solid rgba(255,184,0,0.3);
+  padding: 8px 16px; border-radius: 999px;
+  color: var(--star); font-weight: 800; font-size: 18px;
+}
+.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; }
+.stat-box {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 14px; text-align: center;
+}
+.stat-num { font-size: 22px; font-weight: 800; color: var(--accent); }
+.stat-label { font-size: 11px; color: var(--text-dim); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.section-title { font-size: 14px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin: 18px 0 10px; }
+
+/* ---------- BOTTOM NAV ---------- */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  display: flex; padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  background: rgba(14,17,22,0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  gap: 4px;
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 8px 4px; border-radius: 12px;
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--text-dim); transition: all .2s;
+  font-family: inherit;
+}
+.nav-btn .ico { font-size: 22px; }
+.nav-btn .lbl { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; }
+.nav-btn.active { color: var(--accent); background: rgba(46,166,255,0.1); }
+
+/* ---------- MODAL ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.7);
+  display: none; align-items: flex-end; justify-content: center;
+  animation: fade .2s;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--bg-2); border-radius: 22px 22px 0 0;
+  width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto;
+  padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+  animation: slideUp .3s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }
+.modal-handle {
+  width: 40px; height: 4px; border-radius: 4px;
+  background: var(--border); margin: 0 auto 16px;
+}
+.modal h2 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+
+/* ---------- TOAST ---------- */
+.toast {
+  position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-20px);
+  background: var(--card-2); border: 1px solid var(--border);
+  padding: 12px 18px; border-radius: 12px; font-size: 14px; font-weight: 600;
+  z-index: 300; opacity: 0; transition: all .3s;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  max-width: 90vw; text-align: center;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.success { border-color: var(--green); color: var(--green); }
+.toast.error { border-color: var(--red); color: var(--red); }
+
+/* ---------- EMPTY ---------- */
+.empty {
+  text-align: center; padding: 60px 20px; color: var(--text-dim);
+}
+.empty .emoji { font-size: 48px; margin-bottom: 12px; opacity: 0.6; }
+.empty p { font-size: 14px; }
+
+/* ---------- SUPPORT ---------- */
+.support-header {
+  display: flex; align-items: center; gap: 10px;
+  background: linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(34,197,94,0.05) 100%);
+  border: 1px solid rgba(34,197,94,0.3);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
+}
+.support-badge {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--green); display: flex; align-items: center; justify-content: center;
+  font-size: 22px; color: #fff; font-weight: 800; flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(34,197,94,0.5);
+}
+.faq-item {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); margin-bottom: 8px; overflow: hidden;
+}
+.faq-q { padding: 14px; font-weight: 600; font-size: 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.faq-a { padding: 0 14px 14px; font-size: 13px; color: var(--text-dim); display: none; line-height: 1.6; }
+.faq-item.open .faq-a { display: block; }
+
+/* ---------- LOADER ---------- */
+.loader { display: flex; justify-content: center; padding: 40px; }
+.spinner {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 3px solid var(--border); border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ============ TOP BAR ============ -->
+<div class="topbar">
+  <div class="balance-chip" onclick="App.openTopUp()">
+    <span class="star">⭐</span>
+    <span class="num" id="topBalance">0</span>
+  </div>
+  <div class="top-actions">
+    <button class="icon-btn plus" onclick="App.openTopUp()">＋</button>
+    <button class="icon-btn support" onclick="App.go('support')" title="Support">✅</button>
+  </div>
+</div>
+
+<!-- ============ CONTENT ============ -->
+<div class="content" id="content">
+
+  <!-- MARKETPLACE -->
+  <div class="page active" id="page-market">
+    <h1>Marketplace</h1>
+    <div class="subtitle">Buy & sell Roblox and Standoff 2 items for ⭐ Stars</div>
+
+    <div class="search-box">
+      <span>🔍</span>
+      <input type="text" id="searchInput" placeholder="Search items..." oninput="App.renderCatalog()" />
+    </div>
+
+    <div class="chips" id="gameChips">
+      <div class="chip active" data-game="all" onclick="App.setGame('all', this)">All</div>
+      <div class="chip" data-game="Roblox" onclick="App.setGame('Roblox', this)">Roblox</div>
+      <div class="chip" data-game="Standoff 2" onclick="App.setGame('Standoff 2', this)">Standoff 2</div>
+    </div>
+
+    <div class="sort-row">
+      <button class="sort-btn active" data-sort="date" onclick="App.setSort('date', this)">🕐 Newest</button>
+      <button class="sort-btn" data-sort="price_asc" onclick="App.setSort('price_asc', this)">💰 Price ↑</button>
+      <button class="sort-btn" data-sort="price_desc" onclick="App.setSort('price_desc', this)">💎 Price ↓</button>
+    </div>
+
+    <div class="grid" id="catalogGrid">
+      <div class="loader"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- SELL -->
+  <div class="page" id="page-sell">
+    <h1>Sell Item</h1>
+    <div class="subtitle">Create a listing to sell your item for ⭐ Stars</div>
+
+    <div class="field">
+      <label>Item name</label>
+      <input type="text" id="sellTitle" placeholder="e.g. Rare Roblox Item" maxlength="80" />
+    </div>
+
+    <div class="field">
+      <label>Game</label>
+      <select id="sellGame">
+        <option value="Roblox">Roblox</option>
+        <option value="Standoff 2">Standoff 2</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Price in Stars</label>
+      <input type="number" id="sellPrice" placeholder="100" min="1" max="100000" />
+    </div>
+
+    <div class="field">
+      <label>Description</label>
+      <textarea id="sellDesc" placeholder="Additional info about the item..." maxlength="500"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Your in-game nickname</label>
+      <input type="text" id="sellNick" placeholder="Player123" maxlength="40" />
+    </div>
+
+    <div class="field">
+      <label>Item image (optional)</label>
+      <div class="upload-zone" onclick="document.getElementById('sellImage').click()">
+        📷 Tap to upload image
+        <input type="file" id="sellImage" accept="image/*" style="display:none" onchange="App.previewImage(event)" />
+      </div>
+      <div id="imagePreview" style="margin-top:10px;display:none">
+        <img id="previewImg" style="width:100%;border-radius:12px;" />
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="App.createListing()">🚀 Publish Listing</button>
+  </div>
+
+  <!-- CHAT / ORDERS -->
+  <div class="page" id="page-chat">
+    <h1>Orders & Chats</h1>
+    <div class="subtitle">Your active and past deals</div>
+    <div id="ordersList">
+      <div class="loader"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="page" id="page-profile">
+    <div class="profile-header">
+      <div class="avatar" id="profileAvatar">?</div>
+      <div class="profile-name" id="profileName">Loading...</div>
+      <div class="profile-id" id="profileId">ID: —</div>
+      <div class="profile-balance">
+        <span>⭐</span>
+        <span id="profileBalance">0</span>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-num" id="statPurchases">0</div>
+        <div class="stat-label">Purchases</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="statSales">0</div>
+        <div class="stat-label">Sales</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="statActive">0</div>
+        <div class="stat-label">Active</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num" id="statCompleted">0</div>
+        <div class="stat-label">Completed</div>
+      </div>
+    </div>
+
+    <button class="btn btn-secondary" onclick="App.go('topup')">⭐ Top Up Balance</button>
+    <div style="height:10px"></div>
+    <button class="btn btn-secondary" onclick="App.go('support')">✅ Support</button>
+
+    <div class="section-title">My Listings</div>
+    <div id="myListings"></div>
+
+    <div class="section-title">Purchase History</div>
+    <div id="purchaseHistory"></div>
+  </div>
+
+  <!-- TOP UP -->
+  <div class="page" id="page-topup">
+    <h1>Top Up Balance</h1>
+    <div class="subtitle">1 Star = 1 balance unit</div>
+
+    <div class="chips" style="margin-bottom:14px">
+      <div class="chip active" onclick="App.setTopAmount(1, this)">1 ⭐</div>
+      <div class="chip" onclick="App.setTopAmount(10, this)">10 ⭐</div>
+      <div class="chip" onclick="App.setTopAmount(50, this)">50 ⭐</div>
+      <div class="chip" onclick="App.setTopAmount(100, this)">100 ⭐</div>
+    </div>
+
+    <div class="field">
+      <label>Custom amount</label>
+      <input type="number" id="topAmount" value="1" min="1" max="10000" />
+    </div>
+
+    <button class="btn btn-primary" onclick="App.topUp()">⭐ Pay with Telegram Stars</button>
+  </div>
+
+  <!-- SUPPORT -->
+  <div class="page" id="page-support">
+    <div class="support-header">
+      <div class="support-badge">✓</div>
+      <div>
+        <div style="font-weight:800;font-size:15px">Official Support</div>
+        <div style="font-size:12px;color:var(--green)">Verified • Online 24/7</div>
+      </div>
+    </div>
+
+    <div class="section-title">FAQ</div>
+    <div class="faq-item" onclick="this.classList.toggle('open')">
+      <div class="faq-q">How do I receive my item? <span>▾</span></div>
+      <div class="faq-a">After payment, open the order chat and message the seller with your in-game nickname. The seller will deliver the item inside the game.</div>
+    </div>
+    <div class="faq-item" onclick="this.classList.toggle('open')">
+      <div class="faq-q">What if the seller doesn't respond? <span>▾</span></div>
+      <div class="faq-a">Open the order and tap "⚠️ Problem" to dispute. Support will review the case and resolve it.</div>
+    </div>
+    <div class="faq-item" onclick="this.classList.toggle('open')">
+      <div class="faq-q">Can I get a refund? <span>▾</span></div>
+      <div class="faq-a">Yes, if the seller fails to deliver the item, support can refund your Stars after investigation.</div>
+    </div>
+
+    <div class="section-title">Contact Support</div>
+    <div class="field">
+      <textarea id="supportMsg" placeholder="Describe your issue..."></textarea>
+    </div>
+    <button class="btn btn-green" onclick="App.contactSupport()">✅ Send to Support</button>
+
+    <div class="section-title">My Tickets</div>
+    <div id="ticketsList"><div class="empty"><div class="emoji">📭</div><p>No tickets yet</p></div></div>
+  </div>
+
+</div>
+
+<!-- ============ BOTTOM NAV ============ -->
+<div class="bottom-nav">
+  <button class="nav-btn active" data-page="market" onclick="App.go('market')">
+    <span class="ico">🏪</span>
+    <span class="lbl">Market</span>
+  </button>
+  <button class="nav-btn" data-page="sell" onclick="App.go('sell')">
+    <span class="ico">💰</span>
+    <span class="lbl">Sell</span>
+  </button>
+  <button class="nav-btn" data-page="chat" onclick="App.go('chat')">
+    <span class="ico">💬</span>
+    <span class="lbl">Chats</span>
+  </button>
+  <button class="nav-btn" data-page="profile" onclick="App.go('profile')">
+    <span class="ico">👤</span>
+    <span class="lbl">Profile</span>
+  </button>
+</div>
+
+<!-- ============ MODAL ============ -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)App.closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<!-- ============ TOAST ============ -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================
+   CONFIG — ЗАМЕНИТЕ НА ВАШ BACKEND
+   ===================================================== */
+const CONFIG = {
+  API_BASE_URL: 'https://your-backend.com/api', // ← ваш сервер
+  BOT_USERNAME: 'YourBotUsername',              // ← username бота без @
+};
+
+/* =====================================================
+   TELEGRAM WEBAPP INIT
+   ===================================================== */
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#0e1116');
+  tg.setBackgroundColor('#0e1116');
+  tg.enableClosingConfirmation?.();
+}
+
+const initData = tg?.initData || '';
+
+/* =====================================================
+   API HELPER — все запросы идут с initData в заголовке
+   ===================================================== */
+async function api(path, options = {}) {
+  const res = await fetch(`${CONFIG.API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `tma ${initData}`, // сервер валидирует эту подпись
+      ...(options.headers || {}),
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/* =====================================================
+   MAIN APP
+   ===================================================== */
+const App = {
+  state: {
+    user: null,
+    balance: 0,
+    listings: [],
+    orders: [],
+    myListings: [],
+    purchases: [],
+    tickets: [],
+    filter: { game: 'all', sort: 'date', search: '' },
+    topAmount: 1,
+    currentImage: null,
+  },
+
+  /* ---------- NAVIGATION ---------- */
+  go(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(`page-${page}`)?.classList.add('active');
+
+    // Bottom nav — только для главных
+    const mainPages = ['market', 'sell', 'chat', 'profile'];
+    document.querySelectorAll('.nav-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.page === page);
+    });
+
+    // Back button в Telegram
+    if (!mainPages.includes(page)) {
+      tg?.BackButton?.show();
+      tg.BackButton.onClick(() => App.go('market'));
+    } else {
+      tg?.BackButton?.hide();
+    }
+
+    // Загрузка данных при переходе
+    if (page === 'chat') this.loadOrders();
+    if (page === 'profile') this.loadProfile();
+    if (page === 'support') this.loadTickets();
+
+    document.getElementById('content').scrollTop = 0;
+  },
+
+  /* ---------- TOAST ---------- */
+  toast(msg, type = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast show ${type}`;
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => t.className = 'toast', 2600);
+  },
+
+  /* ---------- MODAL ---------- */
+  openModal(html) {
+    document.getElementById('modalContent').innerHTML = `<div class="modal-handle"></div>${html}`;
+    document.getElementById('modal').classList.add('active');
+  },
+  closeModal() {
+    document.getElementById('modal').classList.remove('active');
+  },
+
+  /* ---------- USER / BALANCE ---------- */
+  async loadUser() {
+    try {
+      const data = await api('/me');
+      this.state.user = data.user;
+      this.state.balance = data.user.balance;
+      this.updateBalanceUI();
+
+      // Профиль
+      const name = data.user.username ? `@${data.user.username}` : (data.user.first_name || 'User');
+      document.getElementById('profileName').textContent = name;
+      document.getElementById('profileId').textContent = `ID: ${data.user.telegram_id}`;
+      document.getElementById('profileBalance').textContent = data.user.balance;
+
+      const av = document.getElementById('profileAvatar');
+      if (data.user.photo_url) {
+        av.innerHTML = `<img src="${data.user.photo_url}" />`;
+      } else {
+        av.textContent = (name[0] || '?').toUpperCase();
+      }
+    } catch (e) {
+      this.toast('Auth failed: ' + e.message, 'error');
+    }
+  },
+
+  updateBalanceUI() {
+    document.getElementById('topBalance').textContent = this.state.balance;
+    document.getElementById('profileBalance').textContent = this.state.balance;
+  },
+
+  /* ---------- CATALOG ---------- */
+  async loadCatalog() {
+    try {
+      const { listings } = await api('/listings');
+      this.state.listings = listings || [];
+      this.renderCatalog();
+    } catch (e) {
+      document.getElementById('catalogGrid').innerHTML =
+        `<div class="empty"><div class="emoji">⚠️</div><p>${e.message}</p></div>`;
+    }
+  },
+
+  setGame(game, el) {
+    this.state.filter.game = game;
+    document.querySelectorAll('#gameChips .chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    this.renderCatalog();
+  },
+
+  setSort(sort, el) {
+    this.state.filter.sort = sort;
+    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    this.renderCatalog();
+  },
+
+  renderCatalog() {
+    const { game, sort } = this.state.filter;
+    const search = document.getElementById('searchInput').value.toLowerCase().trim();
+
+    let list = this.state.listings.filter(l => {
+      if (l.status !== 'active') return false;
+      if (game !== 'all' && l.game !== game) return false;
+      if (search && !l.title.toLowerCase().includes(search)) return false;
+      return true;
+    });
+
+    if (sort === 'price_asc') list.sort((a, b) => a.price_stars - b.price_stars);
+    else if (sort === 'price_desc') list.sort((a, b) => b.price_stars - a.price_stars);
+    else list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    const grid = document.getElementById('catalogGrid');
+    if (!list.length) {
+      grid.innerHTML = `<div class="empty"><div class="emoji">🛒</div><p>No items found</p></div>`;
+      return;
+    }
+
+    grid.innerHTML = list.map(l => this.itemCardHTML(l)).join('');
+  },
+
+  itemCardHTML(l) {
+    const gameClass = l.game === 'Roblox' ? 'game-roblox' : 'game-standoff';
+    const date = new Date(l.created_at).toLocaleDateString();
+    return `
+      <div class="item-card" onclick="App.openItem('${l.id}')">
+        <div class="item-thumb">${l.image_url ? `<img src="${l.image_url}" />` : '🎮'}</div>
+        <div class="item-info">
+          <div class="item-title">${this.esc(l.title)}</div>
+          <div class="item-meta">
+            <span class="game-badge ${gameClass}">${l.game}</span>
+            &nbsp;•&nbsp; @${this.esc(l.seller_username || 'seller')}
+          </div>
+          <div class="item-meta">${date}</div>
+        </div>
+        <div class="item-price">
+          <div class="price-tag">⭐ ${l.price_stars}</div>
+          <button class="buy-btn" onclick="event.stopPropagation();App.openItem('${l.id}')">BUY</button>
+        </div>
+      </div>`;
+  },
+
+  openItem(id) {
+    const l = this.state.listings.find(x => x.id === id);
+    if (!l) return;
+    const gameClass = l.game === 'Roblox' ? 'game-roblox' : 'game-standoff';
+    this.openModal(`
+      <h2>${this.esc(l.title)}</h2>
+      <div style="margin:10px 0"><span class="game-badge ${gameClass}">${l.game}</span></div>
+      ${l.image_url ? `<img src="${l.image_url}" style="width:100%;border-radius:14px;margin-bottom:12px" />` : ''}
+      <div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-bottom:16px">
+        ${l.description ? this.esc(l.description) + '<br><br>' : ''}
+        <b>Seller:</b> @${this.esc(l.seller_username || 'seller')}<br>
+        <b>Nickname:</b> ${this.esc(l.seller_nick || '—')}<br>
+        <b>Published:</b> ${new Date(l.created_at).toLocaleString()}
+      </div>
+      <div class="price-tag" style="font-size:26px;justify-content:center;margin-bottom:16px">⭐ ${l.price_stars}</div>
+      <button class="btn btn-primary" onclick="App.buy('${l.id}')">Buy for ⭐ ${l.price_stars}</button>
+      <div style="height:8px"></div>
+      <button class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
+    `);
+  },
+
+  /* ---------- BUY ---------- */
+  async buy(listingId) {
+    const l = this.state.listings.find(x => x.id === listingId);
+    if (!l) return;
+    if (this.state.balance < l.price_stars) {
+      this.toast('Not enough Stars', 'error');
+      this.closeModal();
+      this.go('topup');
+      return;
+    }
+
+    try {
+      const res = await api('/orders', { method: 'POST', body: { listing_id: listingId } });
+
+      // Открываем чат с ботом для сделки
+      if (res.order?.chat_url && tg) {
+        tg.openTelegramLink(res.order.chat_url);
+      }
+
+      this.closeModal();
+      this.toast('Order created!', 'success');
+      this.loadUser();
+      this.loadCatalog();
+      this.go('chat');
+    } catch (e) {
+      this.toast(e.message, 'error');
+    }
+  },
+
+  /* ---------- CREATE LISTING ---------- */
+  previewImage(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      document.getElementById('previewImg').src = ev.target.result;
+      document.getElementById('imagePreview').style.display = 'block';
+      this.state.currentImage = ev.target.result; // base64 — сервер загрузит в S3
+    };
+    reader.readAsDataURL(file);
+  },
+
+  async createListing() {
+    const title = document.getElementById('sellTitle').value.trim();
+    const game = document.getElementById('sellGame').value;
+    const price = parseInt(document.getElementById('sellPrice').value);
+    const desc = document.getElementById('sellDesc').value.trim();
+    const nick = document.getElementById('sellNick').value.trim();
+
+    if (!title || !price || price < 1) {
+      this.toast('Fill title and price', 'error');
+      return;
+    }
+    if (!['Roblox', 'Standoff 2'].includes(game)) {
+      this.toast('Invalid game', 'error');
+      return;
+    }
+
+    try {
+      await api('/listings', {
+        method: 'POST',
+        body: {
+          title,
+          game,
+          price_stars: price,
+          description: desc,
+          seller_nick: nick,
+          image_base64: this.state.currentImage,
+        },
+      });
+
+      this.toast('Listing published!', 'success');
+      document.getElementById('sellTitle').value = '';
+      document.getElementById('sellPrice').value = '';
+      document.getElementById('sellDesc').value = '';
+      document.getElementById('sellNick').value = '';
+      document.getElementById('imagePreview').style.display = 'none';
+      this.state.currentImage = null;
+      this.loadCatalog();
+      this.go('market');
+    } catch (e) {
+      this.toast(e.message, 'error');
+    }
+  },
+
+  /* ---------- ORDERS ---------- */
+  async loadOrders() {
+    try {
+      const { orders } = await api('/orders');
+      this.state.orders = orders || [];
+      this.renderOrders();
+    } catch (e) {
+      document.getElementById('ordersList').innerHTML =
+        `<div class="empty"><div class="emoji">⚠️</div><p>${e.message}</p></div>`;
+    }
+  },
+
+  renderOrders() {
+    const box = document.getElementById('ordersList');
+    if (!this.state.orders.length) {
+      box.innerHTML = `<div class="empty"><div class="emoji">💬</div><p>No orders yet</p></div>`;
+      return;
+    }
+    box.innerHTML = this.state.orders.map(o => {
+      const isBuyer = o.buyer_id === this.state.user?.telegram_id;
+      const role = isBuyer ? 'Buying from' : 'Selling to';
+      const counterpart = isBuyer ? `@${o.seller_username || 'seller'}` : `@${o.buyer_username || 'buyer'}`;
+      const statusClass = {
+        pending: 'status-pending',
+        chat_created: 'status-chat',
+        completed: 'status-completed',
+        disputed: 'status-disputed',
+      }[o.status] || 'status-pending';
+      const statusText = {
+        pending: 'Waiting for seller',
+        chat_created: 'In progress',
+        completed: 'Completed',
+        disputed: 'Disputed',
+      }[o.status] || o.status;
+
+      return `
+        <div class="order-card" onclick="App.openOrder('${o.id}')">
+          <div class="order-head">
+            <div>
+              <div class="order-title">${this.esc(o.title)}</div>
+              <div class="order-meta">${role} ${counterpart}</div>
+            </div>
+            <div class="status-badge ${statusClass}">${statusText}</div>
+          </div>
+          <div class="order-meta">
+            <span class="game-badge ${o.game === 'Roblox' ? 'game-roblox' : 'game-standoff'}">${o.game}</span>
+            &nbsp;•&nbsp; ⭐ ${o.amount_stars}
+            &nbsp;•&nbsp; ${new Date(o.created_at).toLocaleDateString()}
+          </div>
+        </div>`;
+    }).join('');
+  },
+
+  openOrder(id) {
+    const o = this.state.orders.find(x => x.id === id);
+    if (!o) return;
+    const isBuyer = o.buyer_id === this.state.user?.telegram_id;
+    const canConfirm = isBuyer && o.status === 'chat_created';
+    const canDispute = o.status !== 'completed' && o.status !== 'disputed';
+
+    this.openModal(`
+      <h2>Order #${o.id.slice(0, 8)}</h2>
+      <div class="status-badge ${o.status === 'completed' ? 'status-completed' : 'status-chat'}" style="display:inline-block;margin:10px 0">
+        ${o.status}
+      </div>
+      <div style="font-size:13px;color:var(--text-dim);line-height:1.8;margin:12px 0">
+        <b>Item:</b> ${this.esc(o.title)}<br>
+        <b>Game:</b> ${o.game}<br>
+        <b>Price:</b> ⭐ ${o.amount_stars}<br>
+        <b>Buyer:</b> @${this.esc(o.buyer_username || '—')}<br>
+        <b>Seller:</b> @${this.esc(o.seller_username || '—')}<br>
+        <b>Created:</b> ${new Date(o.created_at).toLocaleString()}
+      </div>
+      ${o.chat_url ? `<button class="btn btn-primary" onclick="Telegram.WebApp.openTelegramLink('${o.chat_url}')">💬 Open Chat</button><div style="height:8px"></div>` : ''}
+      ${canConfirm ? `<button class="btn btn-green" onclick="App.confirmReceipt('${o.id}')">✅ I received the item</button><div style="height:8px"></div>` : ''}
+      ${canDispute ? `<button class="btn btn-red" onclick="App.dispute('${o.id}')">⚠️ Problem / Dispute</button><div style="height:8px"></div>` : ''}
+      <button class="btn btn-secondary" onclick="App.closeModal()">Close</button>
+    `);
+  },
+
+  async confirmReceipt(orderId) {
+    try {
+      await api(`/orders/${orderId}/confirm`, { method: 'POST' });
+      this.toast('Order completed!', 'success');
+      this.closeModal();
+      this.loadOrders();
+      this.loadUser();
+    } catch (e) { this.toast(e.message, 'error'); }
+  },
+
+  async dispute(orderId) {
+    if (!confirm('Open a dispute for this order?')) return;
+    try {
+      await api(`/orders/${orderId}/dispute`, { method: 'POST' });
+      this.toast('Dispute opened. Support will contact you.', 'success');
+      this.closeModal();
+      this.loadOrders();
+    } catch (e) { this.toast(e.message, 'error'); }
+  },
+
+  /* ---------- PROFILE ---------- */
+  async loadProfile() {
+    try {
+      const [stats, listings, purchases] = await Promise.all([
+        api('/me/stats'),
+        api('/me/listings'),
+        api('/me/purchases'),
+      ]);
+      document.getElementById('statPurchases').textContent = stats.purchases || 0;
+      document.getElementById('statSales').textContent = stats.sales || 0;
+      document.getElementById('statActive').textContent = stats.active_listings || 0;
+      document.getElementById('statCompleted').textContent = stats.completed || 0;
+
+      this.state.myListings = listings.listings || [];
+      this.state.purchases = purchases.purchases || [];
+
+      document.getElementById('myListings').innerHTML = this.state.myListings.length
+        ? this.state.myListings.map(l => `
+            <div class="order-card">
+              <div class="order-head">
+                <div>
+                  <div class="order-title">${this.esc(l.title)}</div>
+                  <div class="order-meta">${l.game} • ⭐ ${l.price_stars}</div>
+                </div>
+                <div class="status-badge status-${l.status === 'active' ? 'chat' : 'completed'}">${l.status}</div>
+              </div>
+              ${l.status === 'active' ? `
+                <div class="order-actions">
+                  <button class="btn btn-secondary" style="padding:8px;font-size:12px" onclick="App.removeListing('${l.id}')">🗑 Remove</button>
+                </div>` : ''}
+            </div>`).join('')
+        : `<div class="empty"><div class="emoji">📦</div><p>No listings</p></div>`;
+
+      document.getElementById('purchaseHistory').innerHTML = this.state.purchases.length
+        ? this.state.purchases.map(p => `
+            <div class="order-card">
+              <div class="order-head">
+                <div>
+                  <div class="order-title">${this.esc(p.title)}</div>
+                  <div class="order-meta">${p.game} • ⭐ ${p.amount_stars} • @${this.esc(p.seller_username || '—')}</div>
+                </div>
+                <div class="status-badge status-${p.status === 'completed' ? 'completed' : 'chat'}">${p.status}</div>
+              </div>
+              <div class="order-meta">${new Date(p.created_at).toLocaleDateString()}</div>
+            </div>`).join('')
+        : `<div class="empty"><div class="emoji">🛍</div><p>No purchases</p></div>`;
+    } catch (e) { this.toast(e.message, 'error'); }
+  },
+
+  async removeListing(id) {
+    if (!confirm('Remove this listing?')) return;
+    try {
+      await api(`/listings/${id}`, { method: 'DELETE' });
+      this.toast('Listing removed', 'success');
+      this.loadProfile();
+      this.loadCatalog();
+    } catch (e) { this.toast(e.message, 'error'); }
+  },
+
+  /* ---------- TOP UP ---------- */
+  setTopAmount(v, el) {
+    document.getElementById('topAmount').value = v;
+    document.querySelectorAll('#page-topup .chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  },
+
+  async topUp() {
+    const amount = parseInt(document.getElementById('topAmount').value);
+    if (!amount || amount < 1) { this.toast('Invalid amount', 'error'); return; }
+
+    try {
+      // Сервер создаёт invoice через Bot API и возвращает ссылку
+      const { invoice_url } = await api('/payments/topup', { method: 'POST', body: { amount } });
+      if (tg) {
+        tg.openInvoice(invoice_url, (status) => {
+          if (status === 'paid') {
+            this.toast('Payment successful!', 'success');
+            this.loadUser();
+            this.go('profile');
+          } else if (status === 'failed') {
+            this.toast('Payment failed', 'error');
+          }
+        });
+      } else {
+        window.open(invoice_url, '_blank');
+      }
+    } catch (e) { this.toast(e.message, 'error'); }
+  },
+
+  /* ---------- SUPPORT ---------- */
+  async loadTickets() {
+    try {
+      const { tickets } = await api('/support/tickets');
+      this.state.tickets = tickets || [];
+      const box = document.getElementById('ticketsList');
+      if (!tickets.length) {
+        box.innerHTML = `<div class="empty"><div class="emoji">📭</div><p>No tickets yet</p></div>`;
+        return;
+      }
+      box.innerHTML = tickets.map(t => `
+        <div class="order-card">
+          <div class="order-head">
+            <div class="order-title">${this.esc(t.subject)}</div>
+            <div class="status-badge status-${t.status === 'open' ? 'chat' : 'completed'}">${t.status}</div>
+          </div>
+          <div class="order-meta">${new Date(t.created_at).toLocaleString()}</div>
+        </div>`).join('');
+    } catch (e) { /* silent */ }
+  },
+
+  async contactSupport() {
+    const msg = document.getElementById('supportMsg').value.trim();
+    if (!msg) { this.toast('Write your message', 'error'); return; }
+    try {
+      await api('/support/tickets', { method: 'POST', body: { subject: 'User request', message: msg } });
+      this.toast('Message sent to support', 'success');
+      document.getElementById('supportMsg').value = '';
+      this.loadTickets();
+    } catch (e) { this.toast(e.message, 'error'); }
+  },
+
+  /* ---------- UTIL ---------- */
+  esc(s) {
+    return String(s || '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  },
+
+  /* ---------- INIT ---------- */
+  async init() {
+    await this.loadUser();
+    await this.loadCatalog();
+    // Автообновление баланса каждые 15 сек
+    setInterval(() => this.loadUser(), 15000);
+  },
+};
+
+window.App = App;
+document.addEventListener('DOMContentLoaded', () => App.init());
+</script>
+</body>
+</html>
